@@ -3,9 +3,9 @@ const sequelize = require('./db');
 
 const TravelPlan = sequelize.define('TravelPlan', {
     id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,          // Змінено з INTEGER
         primaryKey: true,
-        autoIncrement: true
+        defaultValue: DataTypes.UUIDV4 // Додано автоматичну генерацію UUID
     },
     title: {
         type: DataTypes.STRING,
@@ -34,14 +34,14 @@ const TravelPlan = sequelize.define('TravelPlan', {
         defaultValue: 1
     }
 }, {
-    version: true // Вмикає оптимістичне блокування через поле version
+    version: true
 });
 
 const Location = sequelize.define('Location', {
     id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,          // Змінено з INTEGER
         primaryKey: true,
-        autoIncrement: true
+        defaultValue: DataTypes.UUIDV4 // Додано автоматичну генерацію UUID
     },
     name: {
         type: DataTypes.STRING,
@@ -71,12 +71,17 @@ const Location = sequelize.define('Location', {
     visit_order: {
         type: DataTypes.INTEGER,
         allowNull: false
+    },
+    // Важливо: додаємо опис зовнішнього ключа тут, щоб він теж був UUID
+    travel_plan_id: {
+        type: DataTypes.UUID,
+        allowNull: false
     }
 }, {
     timestamps: false
 });
 
-// Зв'язки
+// Зв'язки залишаються такими ж, Sequelize сам підхопить типи
 TravelPlan.hasMany(Location, {
     as: 'locations',
     foreignKey: 'travel_plan_id',
