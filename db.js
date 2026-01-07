@@ -1,20 +1,21 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
-    logging: false, // щоб не засмічувати консоль зайвими логами SQL
-});
-
-async function testConnection() {
-    try {
-        await sequelize.authenticate();
-        console.log('✅ База підключена успішно!');
-    } catch (error) {
-        console.error('❌ Не вдалося підключитися до бази:', error);
-    }
-}
-
-testConnection();
+// Використовуємо DATABASE_URL, якщо він є, інакше — окремі змінні
+const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, {
+        dialect: 'postgres',
+        logging: false
+    })
+    : new Sequelize(
+        process.env.DB_NAME,
+        process.env.DB_USER,
+        process.env.DB_PASS,
+        {
+            host: process.env.DB_HOST,
+            dialect: 'postgres',
+            logging: false
+        }
+    );
 
 module.exports = sequelize;

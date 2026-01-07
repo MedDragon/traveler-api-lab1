@@ -1,50 +1,36 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('./db');
+const sequelize = require('./db'); // ЦЬОГО РЯДКА НЕ ВИСТАЧАЛО
 
-// Модель Плану подорожі
 const TravelPlan = sequelize.define('TravelPlan', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
-    },
-    title: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    budget: {
-        type: DataTypes.FLOAT,
-        defaultValue: 0
-    }
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    title: { type: DataTypes.STRING, allowNull: false },
+    description: { type: DataTypes.TEXT },
+    start_date: { type: DataTypes.DATEONLY },
+    end_date: { type: DataTypes.DATEONLY },
+    budget: { type: DataTypes.FLOAT },
+    currency: { type: DataTypes.STRING },
+    is_public: { type: DataTypes.BOOLEAN },
+    version: { type: DataTypes.INTEGER, defaultValue: 1 }
 }, {
-    version: true, // ВКЛЮЧАЄ ОПТИМІСТИЧНЕ БЛОКУВАННЯ (колонка version)
-    timestamps: true // додає createdAt та updatedAt
+    version: true
 });
 
-// Модель Локації
 const Location = sequelize.define('Location', {
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
-    },
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    order_number: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    notes: {
-        type: DataTypes.TEXT
-    }
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    name: { type: DataTypes.STRING, allowNull: false },
+    address: { type: DataTypes.STRING },
+    latitude: { type: DataTypes.FLOAT },
+    longitude: { type: DataTypes.FLOAT },
+    arrival_date: { type: DataTypes.DATE },
+    departure_date: { type: DataTypes.DATE },
+    budget: { type: DataTypes.FLOAT },
+    notes: { type: DataTypes.TEXT },
+    visit_order: { type: DataTypes.INTEGER, allowNull: false }
 }, {
-    timestamps: true
+    timestamps: false
 });
 
-// Зв'язок: Один план має багато локацій
-TravelPlan.hasMany(Location, { foreignKey: 'plan_id', onDelete: 'CASCADE' });
-Location.belongsTo(TravelPlan, { foreignKey: 'plan_id' });
+TravelPlan.hasMany(Location, { as: 'locations', foreignKey: 'travel_plan_id', onDelete: 'CASCADE' });
+Location.belongsTo(TravelPlan, { foreignKey: 'travel_plan_id' });
 
 module.exports = { TravelPlan, Location };
