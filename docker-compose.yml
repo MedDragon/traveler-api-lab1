@@ -1,106 +1,78 @@
-version: '3.8'
-
 services:
-  # Головна база даних (Master)
-  postgres:
+  # Реєстр сховищ (Registry) - 1 бал
+  postgres_registry:
     image: postgres:15-alpine
-    container_name: travel_planner_db
-    restart: unless-stopped
+    container_name: travel_registry
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    command:
-      - "postgres"
-      - "-c"
-      - "wal_level=logical"
-      - "-c"
-      - "max_replication_slots=10"
-      - "-c"
-      - "max_wal_senders=10"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      POSTGRES_DB: registry_db
+      POSTGRES_USER: travel_user
+      POSTGRES_PASSWORD: 123rty789
+    ports:
+      - "5431:5432"
 
-  # Перша репліка
-  postgres_sub:
+  # Вузол 00 (db_0 - db_3)
+  postgres_00:
     image: postgres:15-alpine
-    container_name: travel_planner_replica
+    container_name: postgres_00
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: travel_user
+      POSTGRES_PASSWORD: 123rty789
+      POSTGRES_DB: travel_db_init
+      START_IDS: "0 1 2 3"
+    ports:
+      - "5432:5432"
     volumes:
-      - postgres_replica_data:/var/lib/postgresql/data
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - ./init-shards.sh:/docker-entrypoint-initdb.d/init-shards.sh:ro
 
-  # Друга репліка
-  postgres_sub_2:
+  # Вузол 01 (db_4 - db_7)
+  postgres_01:
     image: postgres:15-alpine
-    container_name: travel_planner_replica_2
+    container_name: postgres_01
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: travel_user
+      POSTGRES_PASSWORD: 123rty789
+      POSTGRES_DB: travel_db_init
+      START_IDS: "4 5 6 7"
+    ports:
+      - "5433:5432"
     volumes:
-      - postgres_replica_data_2:/var/lib/postgresql/data
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - ./init-shards.sh:/docker-entrypoint-initdb.d/init-shards.sh:ro
 
-  # Твій Node.js додаток (API)
+  # Вузол 02 (db_8 - db_b)
+  postgres_02:
+    image: postgres:15-alpine
+    container_name: postgres_02
+    environment:
+      POSTGRES_USER: travel_user
+      POSTGRES_PASSWORD: 123rty789
+      POSTGRES_DB: travel_db_init
+      START_IDS: "8 9 a b"
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./init-shards.sh:/docker-entrypoint-initdb.d/init-shards.sh:ro
+
+  # Вузол 03 (db_c - db_f)
+  postgres_03:
+    image: postgres:15-alpine
+    container_name: postgres_03
+    environment:
+      POSTGRES_USER: travel_user
+      POSTGRES_PASSWORD: 123rty789
+      POSTGRES_DB: travel_db_init
+      START_IDS: "c d e f"
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./init-shards.sh:/docker-entrypoint-initdb.d/init-shards.sh:ro
+
   app:
     build: .
     container_name: travel_planner_api
     ports:
       - "3000:3000"
-    env_file:
-      - .env
     environment:
-      - DB_HOST=postgres
+      - DOCKER_ENV=true
+      - REGISTRY_URL=postgres://travel_user:123rty789@postgres_registry:5432/registry_db
     depends_on:
-      postgres:
-        condition: service_healthy
-    restart: always
-
-  # Експортер для збору метрик бази
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter
-    container_name: travel_planner_exporter
-    environment:
-      DATA_SOURCE_NAME: "postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: always
-
-  # Prometheus (зберігання метрик)
-  prometheus:
-    image: prom/prometheus
-    container_name: travel_planner_prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    ports:
-      - "9090:9090"
-    restart: always
-
-  # Grafana (візуалізація)
-  grafana:
-    image: grafana/grafana
-    container_name: travel_planner_grafana
-    ports:
-      - "3001:3000"
-    restart: always
-
-volumes:
-  postgres_data:
-  postgres_replica_data:
-  postgres_replica_data_2:
+      - postgres_registry
