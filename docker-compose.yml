@@ -1,5 +1,5 @@
 services:
-  # Publisher (Master)
+  # Твоя Master база (Publisher)
   postgres:
     image: postgres:15-alpine
     container_name: travel_planner_db
@@ -21,67 +21,69 @@ services:
       - ./db/migrations:/docker-entrypoint-migrations:ro
       - ./db/replications/publisher:/docker-entrypoint-replications:ro
       - ./db/replications/common:/docker-entrypoint-initdb.d:ro
-    # [SECURITY] Прибираємо порти назовні. Додаток та репліки спілкуються всередині мережі Docker.
-    # ports:
-    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Subscriber 1 (Replica 1)
+  # Репліка 1
   postgres_sub:
+    # ... (твій код без змін)
     image: postgres:15-alpine
     container_name: travel_planner_replica
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_replica_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-migrations:ro
-      - ./db/replications/subscriber:/docker-entrypoint-replications:ro
-      - ./db/replications/common:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "55432:5432"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # ...
 
-  # [2 REPLICAS] Subscriber 2 (Replica 2)
+  # Репліка 2
   postgres_sub_2:
+    # ... (твій код без змін)
     image: postgres:15-alpine
     container_name: travel_planner_replica_2
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_replica_data_2:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-migrations:ro
-      - ./db/replications/subscriber:/docker-entrypoint-replications:ro
-      - ./db/replications/common:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "55433:5432" # Новий порт для другої репліки
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # ...
 
+  # Твій додаток
   app:
+    # ... (твій код без змін)
     build: .
     container_name: travel_planner_api
-    env_file:
-      - .env
-    ports:
-      - "3000:3000"
+    # ...
+
+  # --- НОВІ СЕРВІСИ МОНІТОРИНГУ ---
+
+  # 1. Експортер (збирає метрики з бази і віддає їх Прометею)
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: travel_planner_exporter
+    environment:
+      # Ми підключаємося до Master бази
+      DATA_SOURCE_NAME: "postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
+    restart: always
+
+  # 2. Prometheus (база даних для метрик)
+  prometheus:
+    image: prom/prometheus
+    container_name: travel_planner_prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    restart: always
+
+  # 3. Grafana (красиві графіки)
+  grafana:
+    image: grafana/grafana
+    container_name: travel_planner_grafana
+    ports:
+      - "3001:3000"
+    restart: always
 
 volumes:
   postgres_data:
   postgres_replica_data:
-  postgres_replica_data_2: # Додано розділ для другої репліки
+  postgres_replica_data_2:
+

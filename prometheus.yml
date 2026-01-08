@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s # Як часто знімати метрики
+
+scrape_configs:
+  - job_name: 'postgres_monitoring'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
