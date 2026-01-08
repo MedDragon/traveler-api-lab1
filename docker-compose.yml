@@ -1,4 +1,5 @@
 services:
+  # Publisher (Master)
   postgres:
     image: postgres:15-alpine
     container_name: travel_planner_db
@@ -7,25 +8,71 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_replication_slots=10"
+      - "-c"
+      - "max_wal_senders=10"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-migrations:ro
+      - ./db/replications/publisher:/docker-entrypoint-replications:ro
+      - ./db/replications/common:/docker-entrypoint-initdb.d:ro
+    # [SECURITY] Прибираємо порти назовні. Додаток та репліки спілкуються всередині мережі Docker.
+    # ports:
+    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
+
+  # Subscriber 1 (Replica 1)
+  postgres_sub:
+    image: postgres:15-alpine
+    container_name: travel_planner_replica
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-migrations:ro
+      - ./db/replications/subscriber:/docker-entrypoint-replications:ro
+      - ./db/replications/common:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "55432:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # [2 REPLICAS] Subscriber 2 (Replica 2)
+  postgres_sub_2:
+    image: postgres:15-alpine
+    container_name: travel_planner_replica_2
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_replica_data_2:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-migrations:ro
+      - ./db/replications/subscriber:/docker-entrypoint-replications:ro
+      - ./db/replications/common:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "55433:5432" # Новий порт для другої репліки
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   app:
     build: .
     container_name: travel_planner_api
-    restart: unless-stopped
     env_file:
       - .env
     ports:
@@ -33,11 +80,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
 
 volumes:
-  pgdata:
+  postgres_data:
+  postgres_replica_data:
+  postgres_replica_data_2: # Додано розділ для другої репліки
