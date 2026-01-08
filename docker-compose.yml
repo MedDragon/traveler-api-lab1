@@ -1,5 +1,7 @@
+version: '3.8'
+
 services:
-  # Твоя Master база (Publisher)
+  # Головна база даних (Master)
   postgres:
     image: postgres:15-alpine
     container_name: travel_planner_db
@@ -18,51 +20,67 @@ services:
       - "max_wal_senders=10"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-migrations:ro
-      - ./db/replications/publisher:/docker-entrypoint-replications:ro
-      - ./db/replications/common:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
-  # Репліка 1
+  # Перша репліка
   postgres_sub:
-    # ... (твій код без змін)
     image: postgres:15-alpine
     container_name: travel_planner_replica
-    # ...
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-  # Репліка 2
+  # Друга репліка
   postgres_sub_2:
-    # ... (твій код без змін)
     image: postgres:15-alpine
     container_name: travel_planner_replica_2
-    # ...
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_replica_data_2:/var/lib/postgresql/data
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-  # Твій додаток
+  # Твій Node.js додаток (API)
   app:
-    # ... (твій код без змін)
     build: .
     container_name: travel_planner_api
-    # ...
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
 
-  # --- НОВІ СЕРВІСИ МОНІТОРИНГУ ---
-
-  # 1. Експортер (збирає метрики з бази і віддає їх Прометею)
+  # Експортер для збору метрик бази
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter
     container_name: travel_planner_exporter
     environment:
-      # Ми підключаємося до Master бази
       DATA_SOURCE_NAME: "postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
     restart: always
 
-  # 2. Prometheus (база даних для метрик)
+  # Prometheus (зберігання метрик)
   prometheus:
     image: prom/prometheus
     container_name: travel_planner_prometheus
@@ -74,7 +92,7 @@ services:
       - "9090:9090"
     restart: always
 
-  # 3. Grafana (красиві графіки)
+  # Grafana (візуалізація)
   grafana:
     image: grafana/grafana
     container_name: travel_planner_grafana
@@ -86,4 +104,3 @@ volumes:
   postgres_data:
   postgres_replica_data:
   postgres_replica_data_2:
-

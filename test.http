@@ -1,40 +1,50 @@
-### Створити новий план
+### 1. Створити новий план з метаданими (JSONB)
 POST http://localhost:3000/api/travel-plans
 Content-Type: application/json
 
 {
   "title": "Мій перший план подорожі",
-  "budget": 1000
+  "description": "Подорож Європою з друзями",
+  "budget": 1000,
+  "is_public": true,
+  "metadata": {
+    "tags": ["travel", "friends", "europe"],
+    "priority": "high",
+    "transport_type": "car"
+  }
 }
 
-### Отримати всі плани (щоб дізнатися ID та версію)
+### 2. Оновити план (Оптимістичне блокування + JSONB)
+# Тут я вже вставив твій реальний ID з попереднього запиту
+PUT http://localhost:3000/api/travel-plans/1f339f31-3a4c-45d5-af47-408bb607d7b0
+Content-Type: application/json
+
+{
+  "title": "Оновлений план (Версія 2)",
+  "version": 1,
+  "metadata": {
+    "tags": ["travel", "updated", "success"],
+    "notes": "Це спрацювало, ID тепер правильний!"
+  }
+}
+
+### 3. Отримати всі плани (Перевірка результату)
 GET http://localhost:3000/api/travel-plans
+Accept: application/json
 
-### 1. Додаємо першу локацію (має отримати order_number: 1)
-POST http://localhost:3000/api/travel-plans/7820481b-62d8-44c6-8bbd-6952172d6fb0/locations
+### 4. Створення ще одного плану для різноманітності
+POST http://localhost:3000/api/travel-plans
 Content-Type: application/json
 
 {
-  "name": "Париж",
-  "notes": "Ейфелева вежа"
-}Locations
-
-### 2. Додаємо другу локацію (має отримати order_number: 2 автоматично)
-POST http://localhost:3000/api/travel-plans/7820481b-62d8-44c6-8bbd-6952172d6fb0/locations
-Content-Type: application/json
-
-{
-  "name": "Рим",
-  "notes": "Колізей"
-}
-
-### 3. Перевірка Оптимістичного блокування (Проблема 1)
-# Спробуй надіслати цей запит із версією, яка НЕ збігається з БД (наприклад, 999)
-# Ти маєш отримати 409 Conflict
-PUT http://localhost:3000/api/travel-plans/7820481b-62d8-44c6-8bbd-6952172d6fb0
-Content-Type: application/json
-
-{
-  "title": "Спроба зламати версію",
-  "version": 999
+  "title": "Екстремальна подорож",
+  "description": "Похід у гори",
+  "budget": 5000,
+  "currency": "USD",
+  "is_public": true,
+  "metadata": {
+    "gear": ["tent", "boots", "map"],
+    "difficulty": "hard",
+    "insurance": true
+  }
 }

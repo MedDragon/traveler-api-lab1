@@ -2,14 +2,17 @@
 CREATE TABLE IF NOT EXISTS "TravelPlans" (
                                              "id" UUID PRIMARY KEY,
                                              "title" VARCHAR(200) NOT NULL,
+    "description" TEXT,                      -- ДОДАТИ ЦЕ
     "start_date" TIMESTAMP WITH TIME ZONE,
     "end_date" TIMESTAMP WITH TIME ZONE,
                              "budget" DECIMAL(10, 2),
     "currency" VARCHAR(3),
+    "is_public" BOOLEAN DEFAULT false,       -- ДОДАТИ ЦЕ
     "version" INTEGER DEFAULT 1,
-    "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
-    "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL
-                             );
+    "metadata" JSONB DEFAULT '{}' NOT NULL,  -- ДОДАТИ ЦЕ (Лаба №8)
+    "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+    );
 
 -- Створення таблиці локацій
 CREATE TABLE IF NOT EXISTS "Locations" (

@@ -51,8 +51,8 @@ const sequelize = new Sequelize(
     process.env.DB_USER,
     process.env.DB_PASSWORD,
     {
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
+        host: 'postgres',
+        port: 5432,
         dialect: 'postgres',
         logging: false, // щоб не засмічувати консоль запитами
     }
